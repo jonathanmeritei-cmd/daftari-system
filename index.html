@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftari POS System</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #0f172a; color: #f8fafc; }
+        h1 { color: #38bdf8; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1fr solid #334155; }
+        button { background: #0284c7; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #0369a1; }
+        select, input { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border-bottom: 1px solid #334155; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Daftari POS & Management System</h1>
+    <div class="grid">
+        <div class="card">
+            <h2>New Order</h2>
+            <label>Item:</label>
+            <select id="itemSelect"></select>
+            <label>Quantity:</label>
+            <input type="number" id="itemQty" value="1" min="1">
+            <button onclick="postOrder()">Post Order</button>
+            <p id="statusMsg"></p>
+        </div>
+        <div class="card">
+            <h2>Recent Orders</h2>
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Type</th><th>Total</th><th>Status</th></tr>
+                </thead>
+                <tbody id="ordersTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadInventory() {
+            const res = await fetch('/api/inventory');
+            const data = await res.json();
+            const select = document.getElementById('itemSelect');
+            select.innerHTML = data.map(i => `<option value="${i.id}">${i.name} - KES ${i.price_retail}</option>`).join('');
+        }
+
+        async function postOrder() {
+            const itemId = document.getElementById('itemSelect').value;
+            const qty = document.getElementById('itemQty').value;
+            const res = await fetch('/api/orders/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    posted_by: 'Main Cashier',
+                    order_type: 'retail',
+                    status: 'paid',
+                    items: [{ item_id: parseInt(itemId), qty: parseFloat(qty) }]
+                })
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                document.getElementById('statusMsg').innerText = 'Order #' + data.order_id + ' posted! Total: KES ' + data.total;
+                loadOrders();
+            }
+        }
+
+        async function loadOrders() {
+            const res = await fetch('/api/orders');
+            const data = await res.json();
+            const tbody = document.getElementById('ordersTable');
+            tbody.innerHTML = data.map(o => `<tr><td>#${o.id}</td><td>${o.order_type}</td><td>KES ${o.total_amount}</td><td>${o.status}</td></tr>`).join('');
+        }
+
+        loadInventory();
+        loadOrders();
+    </script>
+</body>
+</html>
